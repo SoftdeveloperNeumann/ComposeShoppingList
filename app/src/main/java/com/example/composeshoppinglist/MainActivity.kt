@@ -1,10 +1,11 @@
 package com.example.composeshoppinglist
 
+
 import android.os.Bundle
-import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,10 +13,13 @@ import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -122,11 +126,11 @@ fun InputArea() {
                     quantity = ""
                     product = ""
                 }
-                if(quantity.isBlank()) {
+                if (quantity.isBlank()) {
                     focusRequester.requestFocus()
                     return@KeyboardActions
                 }
-                if(product.isBlank())
+                if (product.isBlank())
                     focusRequester2.requestFocus()
 
             }, onNext = { focusRequester2.requestFocus() }),
@@ -147,17 +151,16 @@ fun InputArea() {
             onClick = {
 
 
-
                 if (quantity.isNotBlank() && product.isNotBlank()) {
                     shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
                     quantity = ""
                     product = ""
                 }
-                if(quantity.isBlank()) {
+                if (quantity.isBlank()) {
                     focusRequester.requestFocus()
                     return@Button
                 }
-                if(product.isBlank())
+                if (product.isBlank())
                     focusRequester2.requestFocus()
             },
             modifier = Modifier
@@ -174,6 +177,21 @@ fun InputArea() {
 }
 
 
+//@OptIn(ExperimentalMaterialApi::class)
+//@Composable
+//fun ListView() {
+//    val memoList by shoppingMemoViewModel.getAllShoppingMemos()!!.observeAsState(emptyList())
+//    LazyColumn(
+//        Modifier.padding(top = 4.dp)
+//    ) {
+//        items(memoList) { memo_ ->
+//
+//            ListItem(memo = memo_)
+//            Spacer(modifier = Modifier.height(4.dp))
+//        }
+//    }
+//}
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ListView() {
@@ -182,9 +200,46 @@ fun ListView() {
         Modifier.padding(top = 4.dp)
     ) {
         items(memoList) { memo_ ->
+            var unread by remember {
+                mutableStateOf(false)
+            }
+            val dismissState = rememberDismissState(
+                confirmStateChange = {
+                    if (it == DismissValue.DismissedToEnd) {
+                        unread = !unread
+                    }
+                    it != DismissValue.DismissedToEnd
+                }
+            )
 
-            ListItem(memo = memo_)
-            Spacer(modifier = Modifier.height(4.dp))
+            SwipeToDismiss(
+                state = dismissState,
+                directions = setOf(DismissDirection.EndToStart),
+                background = {
+                    val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+                    if(direction == DismissDirection.EndToStart){
+                        Box(
+                            contentAlignment = Alignment.CenterEnd,
+                            modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(Color.LightGray)
+                                .padding(horizontal = 20.dp),
+
+                            ){
+                            Icon( Icons.Default.Delete,
+                                contentDescription ="",
+                            modifier =  Modifier.scale(if (dismissState.targetValue == DismissValue.Default)0.75f else 1f))
+                        }
+                    }
+                },
+                dismissContent = {
+                    ListItem(memo = memo_)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            )
+
+
         }
     }
 }
