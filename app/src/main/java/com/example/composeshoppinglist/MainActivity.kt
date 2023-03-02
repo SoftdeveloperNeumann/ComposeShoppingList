@@ -1,6 +1,7 @@
 package com.example.composeshoppinglist
 
 import android.os.Bundle
+import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.text.isDigitsOnly
 import androidx.lifecycle.ViewModel
 import com.example.composeshoppinglist.MutableValues.currentMemo
 import com.example.composeshoppinglist.MutableValues.product
@@ -81,7 +83,13 @@ fun InputArea() {
         val focusRequester2 = remember { FocusRequester() }
         TextField(
             value = quantity,
-            onValueChange = { quantity = it.take(3) },
+            onValueChange = {
+                quantity = it.take(3).trim()
+                if (quantity.isBlank() || !quantity.isDigitsOnly()) {
+                    quantity = ""
+                    focusRequester.requestFocus()
+                }
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 .copy(imeAction = ImeAction.Next),
             keyboardActions = KeyboardActions(onNext = { focusRequester2.requestFocus() }),
@@ -100,13 +108,27 @@ fun InputArea() {
 
         TextField(
             value = product,
-            onValueChange = { product = it },
+            onValueChange = {
+                product = it
+                if (product.isBlank()) {
+                    focusRequester2.requestFocus()
+                }
+            },
             keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
-                focusRequester.requestFocus()
-                shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
-                quantity = ""
-                product = ""
+
+                if (quantity.isNotBlank() && product.isNotBlank()) {
+                    shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
+                    quantity = ""
+                    product = ""
+                }
+                if(quantity.isBlank()) {
+                    focusRequester.requestFocus()
+                    return@KeyboardActions
+                }
+                if(product.isBlank())
+                    focusRequester2.requestFocus()
+
             }, onNext = { focusRequester2.requestFocus() }),
             modifier = Modifier
                 .height(56.dp)
@@ -124,10 +146,19 @@ fun InputArea() {
         Button(
             onClick = {
 
-                shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
-                quantity = ""
-                product = ""
-                focusRequester.requestFocus()
+
+
+                if (quantity.isNotBlank() && product.isNotBlank()) {
+                    shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
+                    quantity = ""
+                    product = ""
+                }
+                if(quantity.isBlank()) {
+                    focusRequester.requestFocus()
+                    return@Button
+                }
+                if(product.isBlank())
+                    focusRequester2.requestFocus()
             },
             modifier = Modifier
                 .padding(start = 4.dp)
@@ -150,14 +181,13 @@ fun ListView() {
     LazyColumn(
         Modifier.padding(top = 4.dp)
     ) {
-        items(memoList) {memo_ ->
+        items(memoList) { memo_ ->
 
             ListItem(memo = memo_)
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
-
 
 
 @Composable
