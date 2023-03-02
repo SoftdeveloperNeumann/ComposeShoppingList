@@ -2,6 +2,8 @@ package com.example.composeshoppinglist
 
 
 import android.os.Bundle
+import android.util.Log
+import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -177,21 +179,6 @@ fun InputArea() {
 }
 
 
-//@OptIn(ExperimentalMaterialApi::class)
-//@Composable
-//fun ListView() {
-//    val memoList by shoppingMemoViewModel.getAllShoppingMemos()!!.observeAsState(emptyList())
-//    LazyColumn(
-//        Modifier.padding(top = 4.dp)
-//    ) {
-//        items(memoList) { memo_ ->
-//
-//            ListItem(memo = memo_)
-//            Spacer(modifier = Modifier.height(4.dp))
-//        }
-//    }
-//}
-
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ListView() {
@@ -200,63 +187,43 @@ fun ListView() {
         Modifier.padding(top = 4.dp)
     ) {
         items(memoList) { memo_ ->
-            var unread by remember {
-                mutableStateOf(false)
-            }
-            val dismissState = rememberDismissState(
-                confirmStateChange = {
-                    if (it == DismissValue.DismissedToEnd) {
-                        unread = !unread
-                    }
-                    it != DismissValue.DismissedToEnd
-                }
-            )
 
-            SwipeToDismiss(
-                state = dismissState,
-                directions = setOf(DismissDirection.EndToStart),
-                background = {
-                    val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
-                    if(direction == DismissDirection.EndToStart){
-                        Box(
-                            contentAlignment = Alignment.CenterEnd,
-                            modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(Color.LightGray)
-                                .padding(horizontal = 20.dp),
-
-                            ){
-                            Icon( Icons.Default.Delete,
-                                contentDescription ="",
-                            modifier =  Modifier.scale(if (dismissState.targetValue == DismissValue.Default)0.75f else 1f))
-                        }
-                    }
-                },
-                dismissContent = {
-                    ListItem(memo = memo_)
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-            )
-
-
+            ListItem(memo = memo_)
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
 
-
 @Composable
 fun ListItem(memo: ShoppingMemo) {
+    Log.d("TAG", "In ListItem: $memo")
     val context = LocalContext.current
     var isChecked by remember {
         mutableStateOf(memo.isSelected)
     }
 
     Row(verticalAlignment = Alignment.CenterVertically) {
+
         Column(
             Modifier
-                .weight(3f)
-                .align(Alignment.Bottom)
+                .weight(1f)
+            //.align(Alignment.Bottom)
+        ) {
+            Checkbox(
+                checked = isChecked,
+                onCheckedChange = {
+                    isChecked = it
+                    memo.isSelected = it
+                    shoppingMemoViewModel.insertOrUpdate(memo)
+                },
+                modifier = Modifier.align(Alignment.Start)
+            )
+        }
+
+        Column(
+            Modifier
+                .weight(6f)
+            //.align(Alignment.Top)
         ) {
             ClickableText(text = buildAnnotatedString { append(memo.toString()) },
                 style = TextStyle(
@@ -271,30 +238,147 @@ fun ListItem(memo: ShoppingMemo) {
                     currentMemo = memo
 
                 })
+
             if (showDialog) {
 
                 CreateDialog(memo = currentMemo)
             }
         }
-        Column(
-            Modifier
-                .weight(1f)
-                .align(Alignment.Bottom)
-        ) {
-            Checkbox(
-                checked = isChecked,
-                onCheckedChange = {
-                    isChecked = it
-                    memo.isSelected = it
-                    shoppingMemoViewModel.insertOrUpdate(memo)
-                },
-                modifier = Modifier.align(Alignment.End)
-            )
-        }
 
+        Column() {
+            IconButton(
+                onClick = {
+                          shoppingMemoViewModel.delete(memo)
+                          },
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Löschen"
+                )
+            }
+        }
     }
 
 }
+
+//region für SwipeTo Dismiss
+//@OptIn(ExperimentalMaterialApi::class)
+//@Composable
+//fun ListView() {
+//    val memoList by shoppingMemoViewModel.getAllShoppingMemos()!!.observeAsState(emptyList())
+//    LazyColumn(
+//        Modifier.padding(top = 4.dp)
+//    ) {
+//        items(memoList) { memo_ ->
+//
+//            var unread by remember {
+//                mutableStateOf(false)
+//            }
+//            val dismissState = rememberDismissState(
+//                confirmStateChange = {
+//                    if (it == DismissValue.DismissedToStart) {
+//                        unread = !unread
+//
+//
+//                        Log.d("TAG", "ListView: ${memoList.contains(memo_)}")
+//                    }
+//                    it != DismissValue.DismissedToEnd
+//                }
+//            )
+//
+//
+//            SwipeToDismiss(
+//                state = dismissState,
+//                directions = setOf(DismissDirection.EndToStart),
+//                background = {
+//                    val direction = dismissState.dismissDirection ?: return@SwipeToDismiss
+//                    if(direction == DismissDirection.EndToStart && !unread){
+//                        Box(
+//                            contentAlignment = Alignment.CenterEnd,
+//                            modifier =
+//                            Modifier
+//                                .fillMaxSize()
+//                                .background(Color.LightGray)
+//                                .padding(horizontal = 20.dp),
+//
+//                            ){
+//                            Icon( Icons.Default.Delete,
+//                                contentDescription ="",
+//                            modifier =  Modifier.scale(if (dismissState.targetValue == DismissValue.Default)0.75f else 1f))
+//                        }
+//                    }
+//                },
+//                dismissContent = {
+//                    Log.d("TAG", "Call ListItem: $memo_")
+//                    if(unread && dismissState.isDismissed(DismissDirection.EndToStart)){
+//                        shoppingMemoViewModel.delete(memo_)
+////                        unread = !unread
+//                    }else{
+//                        ListItem(memo = memo_)
+//                        Spacer(modifier = Modifier.height(4.dp))
+//                    }
+//
+//                },
+//            )
+//
+//
+//        }
+//    }
+//}
+
+//@Composable
+//fun ListItem(memo: ShoppingMemo) {
+//    Log.d("TAG", "In ListItem: $memo")
+//    val context = LocalContext.current
+//    var isChecked by remember {
+//        mutableStateOf(memo.isSelected)
+//    }
+//
+//    Row(verticalAlignment = Alignment.CenterVertically) {
+//        Column(
+//            Modifier
+//                .weight(3f)
+//                .align(Alignment.Bottom)
+//        ) {
+//            ClickableText(text = buildAnnotatedString { append(memo.toString()) },
+//                style = TextStyle(
+//                    color = if (isChecked) Color.LightGray else Color.Black,
+//                    textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
+//                    fontSize = 24.sp,
+//                ),
+//                modifier = Modifier.fillMaxWidth(),
+//                onClick = {
+//                    Toast.makeText(context, "$memo", Toast.LENGTH_SHORT).show()
+//                    showDialog = true
+//                    currentMemo = memo
+//
+//                })
+//            if (showDialog) {
+//
+//                CreateDialog(memo = currentMemo)
+//            }
+//        }
+//        Column(
+//            Modifier
+//                .weight(1f)
+//                .align(Alignment.Bottom)
+//        ) {
+//            Checkbox(
+//                checked = isChecked,
+//                onCheckedChange = {
+//                    isChecked = it
+//                    memo.isSelected = it
+//                    shoppingMemoViewModel.insertOrUpdate(memo)
+//                },
+//                modifier = Modifier.align(Alignment.End)
+//            )
+//        }
+//
+//    }
+//
+//}
+//endregion
 
 @Composable
 fun CreateDialog(memo: ShoppingMemo) {
