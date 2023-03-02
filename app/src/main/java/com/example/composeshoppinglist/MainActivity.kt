@@ -1,7 +1,6 @@
 package com.example.composeshoppinglist
 
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,16 +8,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,7 +62,7 @@ object MutableValues : ViewModel() {
     var product by mutableStateOf("")
     var showDialog by mutableStateOf(false)
     var showResult by mutableStateOf(false)
-    var currentMemo by mutableStateOf(ShoppingMemo(0,""))
+    var currentMemo by mutableStateOf(ShoppingMemo(0, ""))
 }
 
 
@@ -73,13 +76,20 @@ fun MainView() {
 
 @Composable
 fun InputArea() {
-    Row() {
-        TextField(value = quantity,
-            onValueChange = { quantity = it },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+    Row {
+        val focusRequester = remember { FocusRequester() }
+        val focusRequester2 = remember { FocusRequester() }
+        TextField(
+            value = quantity,
+            onValueChange = { quantity = it.take(3) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                .copy(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusRequester2.requestFocus() }),
             modifier = Modifier
-                .height(48.dp)
-                .width(64.dp),
+                .height(56.dp)
+                .width(64.dp)
+                .focusRequester(focusRequester),
+            singleLine = true,
             placeholder = {
                 Text(
                     text = "Anz.",
@@ -87,12 +97,23 @@ fun InputArea() {
                 )
             }
         )
-        TextField(value = product,
+
+        TextField(
+            value = product,
             onValueChange = { product = it },
+            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                focusRequester.requestFocus()
+                shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
+                quantity = ""
+                product = ""
+            }, onNext = { focusRequester2.requestFocus() }),
             modifier = Modifier
-                .height(48.dp)
+                .height(56.dp)
                 .weight(1f)
-                .padding(start = 4.dp),
+                .padding(start = 4.dp)
+                .focusRequester(focusRequester2),
+            singleLine = true,
             placeholder = {
                 Text(
                     text = "Artikel",
@@ -102,13 +123,15 @@ fun InputArea() {
         )
         Button(
             onClick = {
+
                 shoppingMemoViewModel.insertOrUpdate(ShoppingMemo(quantity.toInt(), product))
                 quantity = ""
                 product = ""
+                focusRequester.requestFocus()
             },
             modifier = Modifier
                 .padding(start = 4.dp)
-                .height(48.dp)
+                .height(56.dp)
         ) {
             Text(
                 text = "+",
@@ -119,19 +142,23 @@ fun InputArea() {
     }
 }
 
+
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ListView() {
     val memoList by shoppingMemoViewModel.getAllShoppingMemos()!!.observeAsState(emptyList())
-
     LazyColumn(
         Modifier.padding(top = 4.dp)
     ) {
-        items(memoList) {
-            ListItem(memo = it)
+        items(memoList) {memo_ ->
+
+            ListItem(memo = memo_)
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }
+
+
 
 @Composable
 fun ListItem(memo: ShoppingMemo) {
@@ -148,18 +175,18 @@ fun ListItem(memo: ShoppingMemo) {
         ) {
             ClickableText(text = buildAnnotatedString { append(memo.toString()) },
                 style = TextStyle(
-                    color = if(isChecked) Color.LightGray else Color.Black,
-                    textDecoration = if(isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                    color = if (isChecked) Color.LightGray else Color.Black,
+                    textDecoration = if (isChecked) TextDecoration.LineThrough else TextDecoration.None,
                     fontSize = 24.sp,
                 ),
-
+                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     Toast.makeText(context, "$memo", Toast.LENGTH_SHORT).show()
                     showDialog = true
-                   currentMemo = memo
+                    currentMemo = memo
 
                 })
-            if (showDialog){
+            if (showDialog) {
 
                 CreateDialog(memo = currentMemo)
             }
@@ -185,29 +212,37 @@ fun ListItem(memo: ShoppingMemo) {
 }
 
 @Composable
-fun CreateDialog(memo: ShoppingMemo){
+fun CreateDialog(memo: ShoppingMemo) {
     quantity = memo.quantity.toString()
     product = memo.product
-    AlertDialog(onDismissRequest = { showDialog= false },
-            title = { Text(text = "Artikel $memo ändern") },
-        text =  {
-            Column() {
-                TextField(value = quantity, onValueChange = { quantity = it}, modifier =  Modifier.fillMaxWidth())
-                TextField(value = product, onValueChange = { product = it}, modifier =  Modifier.fillMaxWidth())
+    AlertDialog(onDismissRequest = { showDialog = false },
+        title = { Text(text = "Artikel $memo ändern") },
+        text = {
+            Column {
+                TextField(
+                    value = quantity,
+                    onValueChange = { quantity = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextField(
+                    value = product,
+                    onValueChange = { product = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
-                        Button(onClick = {
-                            showResult = true
-                            showDialog = false
-                            memo.quantity = quantity.toInt()
-                            memo.product = product
-                            ShoppingMemoViewModel.insertOrUpdate(memo)
-                            quantity = ""
-                            product = ""
-                        }) {
-                            Text(text = "OK")
-                        }
+            Button(onClick = {
+                showResult = true
+                showDialog = false
+                memo.quantity = quantity.toInt()
+                memo.product = product
+                ShoppingMemoViewModel.insertOrUpdate(memo)
+                quantity = ""
+                product = ""
+            }) {
+                Text(text = "OK")
+            }
 
         },
         dismissButton = {
@@ -221,7 +256,7 @@ fun CreateDialog(memo: ShoppingMemo){
             }
         }
 
-        )
+    )
 }
 
 
